@@ -6,10 +6,7 @@
     ],
     "version": "0.0.1",
     "preferGlobal": true,
-    "author": {
-        "name": "Eugene Demchenko"
-    }
-    ],
+    "author": {"name": "Eugene Demchenko"},
     "repository": {
         "type": "git",
         "url": "git://github.com/demchenkoe/node-amqp-rpc.git"
