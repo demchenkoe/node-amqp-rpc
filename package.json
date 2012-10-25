@@ -16,15 +16,16 @@
     },
     "main": "./index",
     "engines": {
-        "node": "0.4 || 0.5 || 0.6"
+        "node": "0.4 || 0.5 || 0.6 || 0.8"
     },
     "licenses": [
         {
             "type": "MIT",
-            "url": "http://github.com/postwait/node-amqp/raw/master/LICENSE-MIT"
+            "url": "http://raw.github.com/demchenkoe/node-amqp-rpc/master/LICENSE"
         }
     ],
     "dependencies": {
-        "amqp": ">=0.1.3"
+        "amqp": ">=0.1.3",
+	"node-uuid": "*"
     }
 }

@@ -5,11 +5,13 @@ var uuid = require('node-uuid').v4;
 
 
 function rpc(opt)   {
+
     if(!opt) opt = {};
-    this.__conn     = null;
-    this.__url      = opt.url ? opt.url: 'amqp://guest:guest@localhost:5672';
-    this.__exchange = null;
-    this.__exchange_name = opt.exchange ? opt.exchange : 'rpc_exchange';
+    this.__conn             = opt.connection ? opt.connection : null;
+    this.__url              = opt.url ? opt.url: 'amqp://guest:guest@localhost:5672';
+    this.__exchange         = opt.exchangeInstance ? opt.exchangeInstance : null;
+    this.__exchange_name    = opt.exchange ? opt.exchange : 'rpc_exchange';
+    this.__exchange_options = opt.exchange_options ? opt.exchange_options : {exclusive: true, autoDelete: true };
 
     this.__results_queue = null;
     this.__results_queue_name = null;
@@ -19,21 +21,26 @@ function rpc(opt)   {
     this.__cmds = {};
 
     this.__connCbs = [];
+    this.__exchangeCbs = [];
 }
 
 
 rpc.prototype._connect = function(cb)  {
 
+    if(!cb) {
+        cb = function(){};
+    }
+
     if(this.__conn) {
 
         if(this.__connCbs.length > 0)    {
-            if(cb)
+
                 this.__connCbs.push(cb);
 
             return true;
         }
 
-        return cb? cb(this.__conn) : true;
+        return cb(this.__conn);
     }
 
     var $this = this;
@@ -57,8 +64,11 @@ rpc.prototype._connect = function(cb)  {
         }
     });
 }
+/**
+ * disconnect from MQ broker
+ */
 
-rpc.prototype._disconnect = function()   {
+rpc.prototype.disconnect = function()   {
 
     if(!this.__conn) return;
     this.__conn.end();
@@ -67,26 +77,51 @@ rpc.prototype._disconnect = function()   {
 
 rpc.prototype._makeExchange = function(cb) {
 
+    if(!cb) {
+        cb = function(){};
+    }
+
     if(this.__exchange) {
+
+        if(this.__exchangeCbs.length > 0)    {
+
+            this.__exchangeCbs.push(cb);
+
+            return true;
+        }
+
         return cb(this.__exchange);
     }
 
-    this.__exchange = this.__conn.exchange('123', {}, function(exchange)    {
+    var $this = this;
+
+    this.__exchangeCbs.push(cb);
+
+    this.__exchange = this.__conn.exchange(this.__exchange_name, {}, function(exchange)    {
         console.log('Exchange ' + exchange.name + ' is open');
-        cb();
+
+        var cbs = $this.__exchangeCbs;
+        $this.__exchangeCbs = [];
+
+        for(var i=0; i< cbs.length; i++)    {
+            cbs[i]($this.__exchange);
+        }
     });
 }
 
 rpc.prototype._makeResultsQueue = function(cb) {
 
+    if(!cb) {
+        cb = function(){};
+    }
+
     if(this.__results_queue) {
         if(this.__make_results_cb.length > 0)   {
 
-            if(cb)
-                this.__make_results_cb.push(cb);
-            return;
+            this.__make_results_cb.push(cb);
+            return true;
         }
-        return cb ? cb(this.__results_queue): true;
+        return cb(this.__results_queue);
     }
 
     var $this = this;
@@ -98,7 +133,7 @@ rpc.prototype._makeResultsQueue = function(cb) {
 
         $this.__results_queue = $this.__conn.queue(
             $this.__results_queue_name,
-            {exclusive: true, autoDelete: true },
+            $this.__exchange_options,
             function(queue) {
 
                 queue.subscribe(function()   {
@@ -138,7 +173,7 @@ rpc.prototype.__onResult = function(message, headers, deliveryInfo)   {
 /**
  * call a remote command
  * @param cmd   command name
- * @param params    paramters of command
+ * @param params    parameters of command
  * @param cb        callback
  * @param context   context of callback
  * @param options   advanced options of amqp
@@ -214,7 +249,7 @@ rpc.prototype.on = function(cmd, cb, context)    {
 
     var $this = this;
 
-    this._connect(function(){
+    this._connect(function()    {
 
         $this.__conn.queue(cmd, function(queue) {
 
