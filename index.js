@@ -143,6 +143,7 @@ rpc.prototype._makeResultsQueue = function(cb) {
                 queue.bind($this.__exchange, $this.__results_queue_name);
 
                 var cbs = $this.__make_results_cb;
+                $this.__make_results_cb = [];
 
                 for(var i=0; i<cbs.length; i++){
                     cbs[i](queue);
