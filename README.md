@@ -33,7 +33,7 @@ Tested with RabbitMQ under ubuntu.
 
         var name = (param && param.name) ? param.name : 'world';
 
-        cb(arr[0] + ' ' + name + '!');
+        cb(arr[1] + ' ' + name + '!');
 
     });
 
