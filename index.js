@@ -7,6 +7,7 @@ var uuid = require('node-uuid').v4;
 function rpc(opt)   {
 
     if(!opt) opt = {};
+    this.opt = opt;
     this.__conn             = opt.connection ? opt.connection : null;
     this.__url              = opt.url ? opt.url: 'amqp://guest:guest@localhost:5672';
     this.__exchange         = opt.exchangeInstance ? opt.exchangeInstance : null;
@@ -41,6 +42,8 @@ rpc.prototype._connect = function(cb)  {
         }
 
         return cb(this.__conn);
+    } else {
+        this.__conn = this.opt.connection ? this.opt.connection : null;
     }
 
     var $this = this;
