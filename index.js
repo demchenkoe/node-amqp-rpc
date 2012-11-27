@@ -57,7 +57,7 @@ rpc.prototype._connect = function(cb)  {
 
     this.__conn.addListener('ready', function(){
 
-       console.log("connected to " + $this.__conn.serverProperties.product);
+//       console.log("connected to " + $this.__conn.serverProperties.product);
 
         var cbs = $this.__connCbs;
         $this.__connCbs = [];
@@ -101,7 +101,7 @@ rpc.prototype._makeExchange = function(cb) {
     this.__exchangeCbs.push(cb);
 
     this.__exchange = this.__conn.exchange(this.__exchange_name, {}, function(exchange)    {
-        console.log('Exchange ' + exchange.name + ' is open');
+//        console.log('Exchange ' + exchange.name + ' is open');
 
         var cbs = $this.__exchangeCbs;
         $this.__exchangeCbs = [];
