@@ -160,11 +160,14 @@ rpc.prototype.__onResult = function(message, headers, deliveryInfo)   {
     var cb = this.__results_cb[ deliveryInfo.correlationId ];
 
     var args = [];
-    for(var k in message)   {
-        if(!message.hasOwnProperty(k)) continue;
+    if(Array.isArray(message) ) {
+      for(var k in message)   {
+          if(!message.hasOwnProperty(k)) continue;
 
-        args.push(message[k]);
+          args.push(message[k]);
+      }
     }
+    else args.push(message);
 
     cb.cb.apply(cb.context, args);
 
