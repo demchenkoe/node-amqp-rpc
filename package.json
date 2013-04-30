@@ -4,7 +4,7 @@
     "keywords": [
         "amqp", "rpc"
     ],
-    "version": "0.0.2",
+    "version": "0.0.3",
     "preferGlobal": true,
     "author": {"name": "Eugene Demchenko"},
     "repository": {
