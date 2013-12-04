@@ -2,7 +2,7 @@
 #AMQP-RPC
 
 RPC library based on AMQP protocol.
-Tested with RabbitMQ under ubuntu.
+Tested with RabbitMQ on the highload project.
 
 
 ###Install RabitMQ
@@ -78,9 +78,9 @@ Run multiple servers.js for round-robin shared.
 
 ##broadcast
 
-    Example: Core receiving data from all workers.
-    Run multiple worker.js for broadcast witness.
-    The core.js must be launched after all worker.js instances.
+Example: Core receiving data from all workers.
+Run multiple worker.js for broadcast witness.
+The core.js must be launched after all worker.js instances.
 
 ###example/broadcast/worker.js
 
@@ -136,7 +136,7 @@ Run multiple servers.js for round-robin shared.
         });
 
 
-results for three workers:
+Results for three workers:
 
     ----------------------- WORKER STATISTICS ----------------------------------------
     host1:2612 	uptime= 2470.39 seconds 	counter= 2
