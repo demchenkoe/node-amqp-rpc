@@ -1,5 +1,5 @@
 
-var rpc = require('../index').factory({
+var rpc = require('../../index').factory({
     url: "amqp://guest:guest@localhost:5672"
 });
 

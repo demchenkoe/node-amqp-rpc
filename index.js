@@ -2,7 +2,8 @@
 
 var amqp = require('amqp');
 var uuid = require('node-uuid').v4;
-
+var os   = require('os');
+var queueNo = 0;
 
 function rpc(opt)   {
 
@@ -24,6 +25,15 @@ function rpc(opt)   {
 
     this.__connCbs = [];
     this.__exchangeCbs = [];
+}
+
+/**
+ * generate unique name for new queue
+ * @returns {string}
+ */
+
+rpc.prototype.generateQueueName = function(type)    {
+    return /*'njsListener:' +*/ os.hostname() + ':pid' + process.pid + ':' + type;
 }
 
 
@@ -125,7 +135,7 @@ rpc.prototype._makeResultsQueue = function(cb) {
 
     var $this = this;
 
-    this.__results_queue_name = uuid();
+    this.__results_queue_name = this.generateQueueName('callback');
     this.__make_results_cb.push(cb);
 
     $this._makeExchange(function()   {
@@ -160,17 +170,17 @@ rpc.prototype.__onResult = function(message, headers, deliveryInfo)   {
 
     var args = [];
     if(Array.isArray(message) ) {
-      for(var k in message)   {
-          if(!message.hasOwnProperty(k)) continue;
 
-          args.push(message[k]);
+      for(var i=0; i< message.length; i++)   {
+          args.push(message[i]);
       }
     }
     else args.push(message);
 
     cb.cb.apply(cb.context, args);
 
-    delete this.__results_cb[ deliveryInfo.correlationId ];
+    if(cb.autoDeleteCallback !== false)
+        delete this.__results_cb[ deliveryInfo.correlationId ];
 }
 
 /**
@@ -189,6 +199,7 @@ rpc.prototype.call = function(cmd, params, cb, context, options) {
     if(!options) options = {};
 
     options.contentType = 'application/json';
+    var corr_id = options.correlationId || uuid();
 
     this._connect(function() {
 
@@ -198,8 +209,11 @@ rpc.prototype.call = function(cmd, params, cb, context, options) {
 
                 $this._makeResultsQueue(function()   {
 
-                    var corr_id = uuid();
-                    $this.__results_cb[ corr_id ] = { cb: cb, context: context };
+                    $this.__results_cb[ corr_id ] = {
+                        cb: cb,
+                        context: context,
+                        autoDeleteCallback: !!options.autoDeleteCallback
+                    };
 
 
                     options.mandatory = true;
@@ -235,6 +249,8 @@ rpc.prototype.call = function(cmd, params, cb, context, options) {
             });
         }
     });
+
+    return corr_id;
 }
 
 /**
@@ -246,16 +262,16 @@ rpc.prototype.call = function(cmd, params, cb, context, options) {
  */
 
 
-rpc.prototype.on = function(cmd, cb, context)    {
+rpc.prototype.on = function(cmd, cb, context, options)    {
 
     if(this.__cmds[ cmd ]) return false;
+    options || (options = {});
 
     var $this = this;
 
     this._connect(function()    {
 
-        $this.__conn.queue(cmd, function(queue) {
-
+        $this.__conn.queue(options.queueName || cmd, function(queue) {
             $this.__cmds[ cmd ] = { queue: queue };
             queue.subscribe(function(message, d, headers, deliveryInfo)  {
 
@@ -276,7 +292,7 @@ rpc.prototype.on = function(cmd, cb, context)    {
 
                         $this.__exchange.publish(
                             deliveryInfo.replyTo,
-                            arguments,
+                            Array.prototype.slice.call(arguments),
                             options
                         );
                     }, cmdInfo);
@@ -348,6 +364,55 @@ rpc.prototype.off = function(cmd)    {
 
     return true;
 }
+
+/**
+ * call broadcast
+ * @param cmd
+ * @param params
+ * @param options
+ */
+
+
+rpc.prototype.callBroadcast = function(cmd, params, options) {
+
+    var $this = this;
+
+    options || (options = {});
+    options.broadcast = true;
+    options.autoDeleteCallback = options.ttl ? false : true;
+    var corr_id = this.call.call(this, cmd, params, options.onResponse, options.context, options);
+    if(options.ttl) {
+        setTimeout(function()   {
+            //release cb
+            if($this.__results_cb[ corr_id ]) {
+                delete $this.__results_cb[ corr_id ];
+            }
+            options.onComplete.call(options.context, cmd, options);
+        }, options.ttl);
+    }
+}
+
+/**
+ * subscribe to broadcast commands
+ * @param cmd
+ * @param cb
+ * @param context
+ */
+
+rpc.prototype.onBroadcast = function (cmd, cb, context, options) {
+
+    options || (options = {});
+    options.queueName = this.generateQueueName('broadcast:q'+ (queueNo++) );
+    return this.on.call(this, cmd, cb, context, options);
+}
+
+
+/**
+ *
+ * @type {Function}
+ */
+
+rpc.prototype.offBroadcast = rpc.prototype.off;
 
 
 module.exports.amqpRPC = rpc;

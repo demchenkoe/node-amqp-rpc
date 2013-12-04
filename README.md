@@ -13,6 +13,11 @@ Tested with RabbitMQ under ubuntu.
 
     npm install amqp-rpc
 
+##round-robin
+
+Example: Call remote function.
+Run multiple servers.js for round-robin shared.
+
 
 ###server.js example
 
@@ -71,5 +76,71 @@ Tested with RabbitMQ under ubuntu.
     rpc.call('withoutCB', {}); //output message on server side console
 
 
+##broadcast
 
-Eugene Demchenko aka Goldy skype demchenkoe email it-bm@mail.ru
+    Example: Core receiving data from all workers.
+    Run multiple worker.js for broadcast witness.
+    The core.js must be launched after all worker.js instances.
+
+###example/broadcast/worker.js
+
+    var os = require('os');
+    var worker_name = os.hostname() + ':' + process.pid;
+    var counter = 0;
+
+    var rpc = require('../../index').factory({
+        url: "amqp://guest:guest@localhost:5672"
+    });
+
+    rpc.onBroadcast('getWorkerStat', function(params, cb)    {
+        if(params && params.type == 'fullStat') {
+            cb(null, {
+                pid: process.pid,
+                hostname: os.hostname(),
+                uptime: process.uptime(),
+                counter: counter++
+            });
+        }
+        else {
+            cb(null, { counter: counter++ })
+        }
+    });
+
+###example/broadcast/core.js
+
+    var rpc = require('../../index').factory({
+        url: "amqp://guest:guest@localhost:5672"
+    });
+
+    var all_stats = {};
+
+    //rpc.callBroadcast() is rpc.call() + waiting multiple responses
+    //If remote handler without response data, you can use rpc.call() for initiate broadcast calls.
+
+    rpc.callBroadcast(
+        'getWorkerStat',
+        { type: 'fullStat'},                    //request parameters
+        {                                       //call options
+            ttl: 1000,                          //wait response time  (1 seconds), after run onComplete
+            onResponse: function(err, stat)  {  //callback on each worker response
+                all_stats[ stat.hostname+':'+ stat.pid ] = stat;
+
+            },
+            onComplete: function()  {   //callback on ttl expired
+                console.log('----------------------- WORKER STATISTICS ----------------------------------------');
+                for(var worker in all_stats) {
+                    s = all_stats[worker];
+                    console.log(worker, '\tuptime=', s.uptime.toFixed(2) + ' seconds', '\tcounter=', s.counter);
+                }
+            }
+        });
+
+
+results for three workers:
+
+    ----------------------- WORKER STATISTICS ----------------------------------------
+    host1:2612 	uptime= 2470.39 seconds 	counter= 2
+    host2:1615 	uptime= 3723.53 seconds 	counter= 8
+    host2:2822 	uptime= 2279.16 seconds 	counter= 3
+
+Eugene Demchenko aka Goldy skype demchenkoe email demchenkoev@gmail.com
