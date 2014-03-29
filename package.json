@@ -5,7 +5,7 @@
     "amqp",
     "rpc"
   ],
-  "version": "0.0.5",
+  "version": "0.0.6",
   "preferGlobal": true,
   "author": {
     "name": "Eugene Demchenko"
