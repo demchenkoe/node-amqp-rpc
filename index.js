@@ -64,19 +64,20 @@ rpc.prototype._connect = function(cb)  {
     this.__connCbs.push(cb);
     var options = this.__conn_options;
     if(!options.url) options.url = this.__url;
+    debug("createConnection options=", options, ', ipml_options=', this.__impl_options || {});
     this.__conn = amqp.createConnection(
       options,
         this.__impl_options
     );
 
-    this.__conn.addListener('ready', function() {
-        debug("connected to " + $this.__conn.serverProperties.product);
-        var cbs = $this.__connCbs;
-        $this.__connCbs = [];
+    this.__conn.on('ready', function() {
+      debug("connected to " + $this.__conn.serverProperties.product);
+      var cbs = $this.__connCbs;
+      $this.__connCbs = [];
 
-        for(var i=0; i< cbs.length; i++)    {
-            cbs[i]($this.__conn);
-        }
+      for(var i=0; i< cbs.length; i++)    {
+          cbs[i]($this.__conn);
+      }
     });
 }
 /**
@@ -111,8 +112,12 @@ rpc.prototype._makeExchange = function(cb) {
     var $this = this;
 
     this.__exchangeCbs.push(cb);
-
-    this.__exchange = this.__conn.exchange(this.__exchange_name, {}, function(exchange)    {
+  /*
+   * Added option autoDelete=false.
+   * Otherwise we had an error in library node-amqp version > 0.1.7.
+   * Text of such error: "PRECONDITION_FAILED - cannot redeclare exchange '<exchange name>' in vhost '/' with different type, durable, internal or autodelete value"
+   */
+    this.__exchange = this.__conn.exchange(this.__exchange_name, { autoDelete: false }, function(exchange)    {
         debug('Exchange ' + exchange.name + ' is open');
         var cbs = $this.__exchangeCbs;
         $this.__exchangeCbs = [];
@@ -121,6 +126,7 @@ rpc.prototype._makeExchange = function(cb) {
             cbs[i]($this.__exchange);
         }
     });
+
 }
 
 rpc.prototype._makeResultsQueue = function(cb) {
