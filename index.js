@@ -14,7 +14,7 @@ function rpc(opt)   {
     this.__url              = opt.url ? opt.url: 'amqp://guest:guest@localhost:5672';
     this.__exchange         = opt.exchangeInstance ? opt.exchangeInstance : null;
     this.__exchange_name    = opt.exchange ? opt.exchange : 'rpc_exchange';
-    this.__exchange_options = opt.exchange_options ? opt.exchange_options : {exclusive: true, autoDelete: true };
+    this.__exchange_options = opt.exchange_options ? opt.exchange_options : {exclusive: false, autoDelete: true };
     this.__impl_options     = opt.ipml_options || {defaultExchangeName: this.__exchange_name};
     this.__conn_options     = opt.conn_options || {};
 
@@ -196,11 +196,11 @@ rpc.prototype.__onResult = function(message, headers, deliveryInfo)   {
 
 /**
  * call a remote command
- * @param cmd   command name
- * @param params    parameters of command
- * @param cb        callback
- * @param context   context of callback
- * @param options   advanced options of amqp
+ * @param {string} cmd   command name
+ * @param {Buffer|Object|String}params    parameters of command
+ * @param {function} cb        callback
+ * @param {object} context   context of callback
+ * @param {object} options   advanced options of amqp
  */
 
 rpc.prototype.call = function(cmd, params, cb, context, options) {
@@ -266,10 +266,24 @@ rpc.prototype.call = function(cmd, params, cb, context, options) {
 
 /**
  * add new command handler
- * @param cmd   command name or match string
- * @param cb    handler
- * @param context   context for handler
- * @return {Boolean}
+ * @param {string} cmd                command name or match string
+ * @param {function} cb               handler
+ * @param {object} context            context for handler
+ * @param {object} options            advanced options
+ * @param {string} options.queueName  name of queue. Default equal to "cmd" parameter
+ * @param {boolean} options.durable   If true, the queue will be marked as durable.
+ *                                    Durable queues remain active when a server restarts.
+ *                                    Non-durable queues (transient queues) are purged if/when a server restarts.
+ *                                    Note that durable queues do not necessarily hold persistent messages,
+ *                                    although it does not make sense to send persistent messages to a transient queue.
+
+ * @param {boolean} options.exclusive Exclusive queues may only be accessed by the current connection,
+ *                                    and are deleted when that connection closes.
+ * @param {boolean} options.autoDelete If true, the queue is deleted when all consumers have finished using it.
+ *                                     The last consumer can be cancelled either explicitly or because its channel is closed.
+ *                                     If there was no consumer ever on the queue, it won't be deleted. Applications
+ *                                     can explicitly delete auto-delete queues using the Delete method as normal.
+ * @return {boolean}
  */
 
 
@@ -277,12 +291,11 @@ rpc.prototype.on = function(cmd, cb, context, options)    {
     debug('on(), routingKey=%s', cmd);
     if(this.__cmds[ cmd ]) return false;
     options || (options = {});
-
     var $this = this;
 
     this._connect(function()    {
 
-        $this.__conn.queue(options.queueName || cmd, function(queue) {
+        $this.__conn.queue(options.queueName || cmd, options, function(queue) {
             $this.__cmds[ cmd ] = { queue: queue };
             queue.subscribe(function(message, d, headers, deliveryInfo)  {
 
@@ -325,8 +338,8 @@ rpc.prototype.on = function(cmd, cb, context, options)    {
 
 /**
  * remove command handler added with "on" method
- * @param cmd       command or match string
- * @return {Boolean}
+ * @param {string} cmd       command or match string
+ * @return {boolean}
  */
 
 rpc.prototype.off = function(cmd)    {
@@ -378,7 +391,7 @@ rpc.prototype.off = function(cmd)    {
 
 /**
  * call broadcast
- * @param cmd
+ * @param {string} cmd
  * @param params
  * @param options
  */
@@ -405,9 +418,9 @@ rpc.prototype.callBroadcast = function(cmd, params, options) {
 
 /**
  * subscribe to broadcast commands
- * @param cmd
- * @param cb
- * @param context
+ * @param {string} cmd
+ * @param {function} cb
+ * @param {object} context
  */
 
 rpc.prototype.onBroadcast = function (cmd, cb, context, options) {

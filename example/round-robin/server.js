@@ -1,6 +1,6 @@
 
 var rpc = require('../../index').factory({
-    url: "amqp://guest:guest@localhost:5672"
+  conn_options: { url: "amqp://guest:guest@localhost:5672", heartbeat: 10 }
 });
 
 
