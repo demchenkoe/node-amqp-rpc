@@ -291,11 +291,12 @@ rpc.prototype.on = function(cmd, cb, context, options)    {
     debug('on(), routingKey=%s', cmd);
     if(this.__cmds[ cmd ]) return false;
     options || (options = {});
+
     var $this = this;
 
     this._connect(function()    {
 
-        $this.__conn.queue(options.queueName || cmd, options, function(queue) {
+        $this.__conn.queue(options.queueName || cmd, function(queue) {
             $this.__cmds[ cmd ] = { queue: queue };
             queue.subscribe(function(message, d, headers, deliveryInfo)  {
 
