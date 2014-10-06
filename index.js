@@ -63,7 +63,7 @@ rpc.prototype._connect = function(cb)  {
 
     this.__connCbs.push(cb);
     var options = this.__conn_options;
-    if(!options.url) options.url = this.__url;
+    if(!options.url && !options.host) options.url = this.__url;
     debug("createConnection options=", options, ', ipml_options=', this.__impl_options || {});
     this.__conn = amqp.createConnection(
       options,
